@@ -5,40 +5,30 @@ namespace ServerCore
 {
     class Program
     {
-        // volatile: 언제 바뀔지 모르는 값 => 최적화하지 않음
-        volatile static bool _stop = false;
-
-        static void ThreadMain()
-        {
-            Console.WriteLine("스레드 시작!");
-
-            // Release Mode에서 while (_stop == false) 코드 (최적화)
-            // if (_stop == false)
-            //     while (true)
-            // 따라서 아래의 코드는 최적화 대상이 되면 안됨(_stop의 값이 도중에 바뀔 수 있으므로)
-
-            while(_stop == false)
-            {
-                // 누군가가 stop 신호를 해주기를 기다린다.
-            }
-            Console.WriteLine("스레드 종료!");
-        }
-
         static void Main(string[] args)
         {
-            Task t = new Task(ThreadMain);
-            t.Start();
+            int[,] arr = new int[10000, 10000];
 
-            Thread.Sleep(1000);
+            // 행 우선 접근이 열 우선 접근보다 빠른 이유:
+            // 캐시의 spatial locality 전략으로 행을 캐시에 저장 
+            // 행 우선 접근 시 cache hit 발생 -> 빠르게 데이터 접근 가능
+            {
+                long now = DateTime.Now.Ticks;
+                for (int y = 0; y < 10000; y++)
+                    for (int x = 0; x < 10000; x++)
+                        arr[y, x] = 1;
+                long end = DateTime.Now.Ticks;
+                Console.WriteLine($"(y, x) 순서 걸린 시간 {end - now}");
+            }
 
-            _stop = true;
-
-            Console.WriteLine("Stop 호출");
-            Console.WriteLine("종료 대기 중");
-
-            t.Wait();
-
-            Console.WriteLine("종료 성공");
+            {
+                long now = DateTime.Now.Ticks;
+                for (int y = 0; y < 10000; y++)
+                    for (int x = 0; x < 10000; x++)
+                        arr[x, y] = 1;
+                long end = DateTime.Now.Ticks;
+                Console.WriteLine($"(x, y) 순서 걸린 시간 {end - now}");
+            }
         }
     }
 }
