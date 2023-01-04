@@ -19,9 +19,18 @@ namespace ServerCore
         // int 32비트 : [Unused(1-bit)] [WriteThreadID(15-bit)] [ReadCount(16-bit)]
         // Unused: 맨 왼쪽 비트 사용 시 flag 값이 음수가 될 수 있으므로 사용하지 않음
         int _flag = EMPTY_FLAG;
+        int _writeCount = 0;
 
         public void WriteLock()
         {
+            // 동일 스레드가 WriteLock을 이미 획득하고 있는지 확인
+            int lockThreadID = (_flag & WRITE_MASK) >> 16;
+            if (Thread.CurrentThread.ManagedThreadId == lockThreadID)
+            {
+                _writeCount++;
+                return;
+            }
+
             // 아무도 WriteLock 또는 ReadLock을 획득하고 있지 않을 때, 경합해서 소유권을 얻는다.
             int desired = (Thread.CurrentThread.ManagedThreadId << 16) & WRITE_MASK;
             while(true)
@@ -30,7 +39,10 @@ namespace ServerCore
                 {
                     // WriteThreadID(15)에 해당하는 부분만 저장
                     if (Interlocked.CompareExchange(ref _flag, desired, EMPTY_FLAG) == EMPTY_FLAG)
+                    {
+                        _writeCount = 1;
                         return;
+                    }
                 }
 
                 Thread.Yield();
@@ -39,11 +51,21 @@ namespace ServerCore
 
         public void WriteUnlock()
         {
-            Interlocked.Exchange(ref _flag, EMPTY_FLAG);
+            int lockCount = --_writeCount;
+            if (lockCount == 0)
+                Interlocked.Exchange(ref _flag, EMPTY_FLAG);
         }
 
         public void ReadLock() 
-        { 
+        {
+            // 동일 스레드가 WriteLock을 이미 획득하고 있는지 확인
+            int lockThreadID = (_flag & WRITE_MASK) >> 16;
+            if (Thread.CurrentThread.ManagedThreadId == lockThreadID)
+            {
+                Interlocked.Increment(ref _flag);
+                return;
+            }
+
             // 아무도 WriteLock을 획득하고 있지 않으면, ReadCount를 1 늘린다.
             while (true)
             {
