@@ -3,50 +3,35 @@ using System.Threading;
 
 namespace ServerCore
 {
-    class SpinLock
+    class Lock
     {
-        volatile int _locked = 0;
+        // 1. AutoResetEvent
+        // AutoResetEvent를 기다리는 스레드들에게 신호를 보내 하나의 스레드만 통과시키고 나머지 스레드들은 다음 신호를 기다리게 한다.
+        AutoResetEvent _available = new AutoResetEvent(true);
+
+        // 2. ManualResetEvent
+        // ManualResetEvent _available = new ManualResetEvent(true);
+
         public void Acquire()
         {
-            while (true)
-            {
-                // 1.
-                // original 변수 위치: stack / _locked 변수 위치: data
-                // Interlocked.Exchange: location1을 value 값으로 설정
-                // 리턴: location1의 원래 값
-                //int original = Interlocked.Exchange(ref _locked, 1);
-                //if (original == 0)
-                //    break;
+            // 스레드 A가 AutoResetEvent 객체의 WaitOne() 메소드를 써서 대기하고 있다가, 
+            // 다른 스레드 B에서 이 AutoResetEvent 객체의 Set() 메소드를 호출하면
+            // 스레드 A는 대기 상태를 해제하고 계속 다음 문장을 실행할 수 있게 된다.
 
-                // 2.
-                // 위의 코드처럼 조건 없이 변수 값을 바꾸는 것은 위험할 수 있음
-                // Interlocked.CompareExchange: location1과 comparand의 값이 같으면 location1의 값을 value 값으로 바꿈
-                // 리턴: location1의 원래 값
-                // if (_locked == 1) _locked = 0;과 동일
-                int expected = 0;
-                int desired = 1;
-                if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
-                    break;
-
-                // 쉬다 올게~
-                Thread.Sleep(1); // 무조건 1ms 휴식
-                Thread.Sleep(0); // 조건부 양보 => 자신보다 우선순위가 낮은 애들한테는 양보 불가 => 우선순위가 나보다 같거나 높은 스레드가 없으면 다시 본인한테
-                Thread.Yield(); // 관대한 양보 => 관대하게 양보할테니, 지금 실행이 가능한 스레드가 있으면 실행하기 => 실행 가능한 애가 없으면 남은 시간 소진
-                // Thread.Yield()는 현재 실행되고 있는 스레드와 같은 프로세서에서 실행되고 있는 스레드에게 timeslice(실행 시간) 배정
-            }
+            _available.WaitOne(); // 입장 시도
         }
 
         public void Release() 
         {
-            // 잠금 해제
-            _locked = 0;
+            // Set(): flag == true(AutoResetEvent(true))으로 만든다.
+            _available.Set();
         }
     }
 
     class Program
     {
         static int num = 0;
-        static SpinLock _lock = new SpinLock();
+        static Lock _lock = new Lock();
 
         static void Thread_1()
         {
