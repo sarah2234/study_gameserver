@@ -14,29 +14,38 @@ namespace DummyClient
             IPAddress ipAddr = ipHost.AddressList[0];
             IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
 
-            Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-            try
+            while (true)
             {
-                socket.Connect(endPoint);
-                Console.WriteLine($"Connected to {socket.RemoteEndPoint.ToString()}");
+                Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                byte[] sendBuffer = Encoding.UTF8.GetBytes("Hello World!");
-                int sendBytes = socket.Send(sendBuffer);
+                try
+                {
+                    // 서버에게 연결 요청
+                    socket.Connect(endPoint);
+                    Console.WriteLine($"Connected to {socket.RemoteEndPoint.ToString()}");
 
-                byte[] recvBuffer = new byte[1024];
-                int recvBytes = socket.Receive(recvBuffer);
-                string recvData = Encoding.UTF8.GetString(recvBuffer, 0, recvBytes);
-                Console.WriteLine($"[From Server] {recvData}");
+                    // 서버에게 버퍼 송신
+                    byte[] sendBuffer = Encoding.UTF8.GetBytes("Hello World!");
+                    int sendBytes = socket.Send(sendBuffer);
 
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
+                    // 서버에게서 버퍼 수신
+                    byte[] recvBuffer = new byte[1024];
+                    int recvBytes = socket.Receive(recvBuffer);
+                    string recvData = Encoding.UTF8.GetString(recvBuffer, 0, recvBytes);
+                    Console.WriteLine($"[From Server] {recvData}");
+
+                    // 소켓 통신 종료
+                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Close();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                }
+
+                // 3초마다 위의 작업 반복
+                Thread.Sleep(3000);
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-            
         }
     }
 }

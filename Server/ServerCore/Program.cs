@@ -8,6 +8,37 @@ namespace ServerCore
 {
     class Program
     {
+        static Listener _listener = new Listener();
+
+        // 클라이언트의 연결 요청이 성공적으로 받아들여졌을 때 수행하는 함수
+        static void OnAcceptHandler(Socket clientSocket)
+        {
+            try
+            {
+                // 메세지를 받음
+                byte[] recvBuffer = new byte[1024];
+                int recvBytes = clientSocket.Receive(recvBuffer);
+                // Encoding.GetString: 지정한 바이트 배열의 모든 바이트를 문자열로 디코딩
+                // index에서 시작하여 count 길이만큼의 바이트 시퀀스를 문자열로 디코딩
+                string recvData = Encoding.UTF8.GetString(recvBuffer, 0, recvBytes);
+                Console.WriteLine($"[From Client] {recvData}");
+
+                // 메세지를 보냄
+                byte[] sendBuffer = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+                clientSocket.Send(sendBuffer);
+
+                // 통신 종료
+                // SocketShutdown.Both: 소켓의 송수신을 모두 사용하지 않음
+                clientSocket.Shutdown(SocketShutdown.Both);
+                clientSocket.Close();
+            }
+
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+
         static void Main(string[] args) 
         {
             // DNS (Domain Name System)
@@ -21,46 +52,13 @@ namespace ServerCore
             // port(7777): address와 연결된 포트 번호이거나, 사용할 수 있는 포트가 있을 시 0으로 지정 
             IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
 
-            // TCP 소켓 객체 생성
-            Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            // Listen 서버 생성
+            _listener.Init(endPoint, OnAcceptHandler);
+            Console.WriteLine("Listening...");
 
-            try
+            while (true)
             {
-                // 소켓에 필요한 정보(ip 주소, 포트 번호) 바인딩
-                listenSocket.Bind(endPoint);
-
-                // Listen: 소켓을 listen(클라이언트의 연결 요청을 기다리는 상태)로 만든다.
-                // backlog: 최대 대기 수
-                listenSocket.Listen(10);
-
-                while (true)
-                {
-                    Console.WriteLine("Listening...");
-
-                    // 클라이언트의 연결 요청을 받음
-                    Socket clientSocket = listenSocket.Accept();
-
-                    // 메세지를 받음
-                    byte[] recvBuffer = new byte[1024];
-                    int recvBytes = clientSocket.Receive(recvBuffer);
-                    // Encoding.GetString: 지정한 바이트 배열의 모든 바이트를 문자열로 디코딩
-                    // index에서 시작하여 count 길이만큼의 바이트 시퀀스를 문자열로 디코딩
-                    string recvData = Encoding.UTF8.GetString(recvBuffer, 0, recvBytes);
-                    Console.WriteLine($"[From Client] {recvData}");
-
-                    // 메세지를 보냄
-                    byte[] sendBuffer = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-                    clientSocket.Send(sendBuffer);
-
-                    // 통신 종료
-                    // SocketShutdown.Both: 소켓의 송수신을 모두 사용하지 않음
-                    clientSocket.Shutdown(SocketShutdown.Both);
-                    clientSocket.Close();
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
+               
             }
         }
     }
