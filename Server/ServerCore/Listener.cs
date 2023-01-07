@@ -11,6 +11,8 @@ namespace ServerCore
     internal class Listener
     {
         /*
+         * C#에서는 대리자(Delegate)로 callback 함수를 구현한다.
+         * 
          * Func: Func 대리자(Delegate)는 결과를 반환하는 메소드를 참조한다.
          * Func 대리자의 형식 매개변수 중 가장 마지막에 있는 것이 반환 형식이다.
          * ex) delegate TResult Func<out TResult>() => 그 자체가 반환 형식
@@ -39,12 +41,19 @@ namespace ServerCore
             // backlog: 최대 대기 수
             _listenSocket.Listen(10);
 
-            // SocketAsyncEventArgs: 소켓 이벤트(한 번 만들어놓으면 재사용 가능)
-            SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-            // Event: 특정 상황이 발생했을 때, 그것을 외부에 알리고자 하는 용도. delegate를 기반으로 함
-            // EventHandler: event를 어떻게 다룰지 정의한 함수 포인터
-            args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptComplete);
-            RegisterAccept(args);
+            // 서버를 여러 개 만들어 동시다발적으로 클라이언트의 요청들을 받음
+            for (int i = 0; i < 10; i++)
+            {
+                // SocketAsyncEventArgs: 소켓 이벤트(한 번 만들어놓으면 재사용 가능)
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                // Event: 특정 상황이 발생했을 때, 그것을 외부에 알리고자 하는 용도. delegate를 기반으로 함
+                // EventHandler: event를 어떻게 다룰지 정의한 함수 포인터
+
+                // 프로그램 실행 시 OnAcceptComplete 콜백 함수는 별도의 스레드에서 동작하게 된다.
+                // => 해당 스레드와 주 스레드 간 race condition이 발생할 수 있는 문제!
+                args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptComplete);
+                RegisterAccept(args);
+            }
         }
 
         void RegisterAccept(SocketAsyncEventArgs args)

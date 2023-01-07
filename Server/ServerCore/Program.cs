@@ -15,22 +15,17 @@ namespace ServerCore
         {
             try
             {
-                // 메세지를 받음
-                byte[] recvBuffer = new byte[1024];
-                int recvBytes = clientSocket.Receive(recvBuffer);
-                // Encoding.GetString: 지정한 바이트 배열의 모든 바이트를 문자열로 디코딩
-                // index에서 시작하여 count 길이만큼의 바이트 시퀀스를 문자열로 디코딩
-                string recvData = Encoding.UTF8.GetString(recvBuffer, 0, recvBytes);
-                Console.WriteLine($"[From Client] {recvData}");
+                // _listener가 성공적으로 연결 요청을 받았을 때 세션 생성
+                Session session = new Session();
+                session.Start(clientSocket);
 
-                // 메세지를 보냄
                 byte[] sendBuffer = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-                clientSocket.Send(sendBuffer);
+                session.Send(sendBuffer);
 
-                // 통신 종료
-                // SocketShutdown.Both: 소켓의 송수신을 모두 사용하지 않음
-                clientSocket.Shutdown(SocketShutdown.Both);
-                clientSocket.Close();
+                Thread.Sleep(1000);
+
+                session.Disconnect();
+                session.Disconnect(); // 연결 종료를 두 번 했을 시 오류가 뜨는지 확인
             }
 
             catch (Exception e)
