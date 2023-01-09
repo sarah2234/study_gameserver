@@ -26,31 +26,31 @@ namespace ServerCore
          */
 
         Socket _listenSocket;
-        Action<Socket> _onAcceptHandler; // Socket을 인자로 사용하는 메소드 참조
+        Action<Socket> _onAcceptHandler; /* Socket을 인자로 사용하는 메소드 참조 */
 
         public void Init(IPEndPoint endPoint, Action<Socket> onAcceptHandler)
         {
-            // TCP 소켓 객체 생성
+            /* TCP 소켓 객체 생성 */
             _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _onAcceptHandler += onAcceptHandler;
 
-            // 소켓에 필요한 정보(ip 주소, 포트 번호) 바인딩
+            /* 소켓에 필요한 정보(ip 주소, 포트 번호) 바인딩 */
             _listenSocket.Bind(endPoint);
 
-            // Listen: 소켓을 listen(클라이언트의 연결 요청을 기다리는 상태)로 만든다.
-            // backlog: 최대 대기 수
+            /* Listen: 소켓을 listen(클라이언트의 연결 요청을 기다리는 상태)로 만든다. */
+            /* backlog: 최대 대기 수 */
             _listenSocket.Listen(10);
 
-            // 서버를 여러 개 만들어 동시다발적으로 클라이언트의 요청들을 받음
+            /* 서버를 여러 개 만들어 동시다발적으로 클라이언트의 요청들을 받음 */
             for (int i = 0; i < 10; i++)
             {
-                // SocketAsyncEventArgs: 소켓 이벤트(한 번 만들어놓으면 재사용 가능)
+                /* SocketAsyncEventArgs: 소켓 이벤트(한 번 만들어놓으면 재사용 가능) */
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                // Event: 특정 상황이 발생했을 때, 그것을 외부에 알리고자 하는 용도. delegate를 기반으로 함
-                // EventHandler: event를 어떻게 다룰지 정의한 함수 포인터
+                /* Event: 특정 상황이 발생했을 때, 그것을 외부에 알리고자 하는 용도. delegate를 기반으로 함 */
+                /* EventHandler: event를 어떻게 다룰지 정의한 함수 포인터 */
 
-                // 프로그램 실행 시 OnAcceptComplete 콜백 함수는 별도의 스레드에서 동작하게 된다.
-                // => 해당 스레드와 주 스레드 간 race condition이 발생할 수 있는 문제!
+                /* 프로그램 실행 시 OnAcceptComplete 콜백 함수는 별도의 스레드에서 동작하게 된다. */
+                /* => 해당 스레드와 주 스레드 간 race condition이 발생할 수 있는 문제! */
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptComplete);
                 RegisterAccept(args);
             }
@@ -58,12 +58,12 @@ namespace ServerCore
 
         void RegisterAccept(SocketAsyncEventArgs args)
         {
-            // 초기화
+            /* 초기화 */
             args.AcceptSocket = null;
 
-            // AcceptAsync: 클라이언트의 연결 요청을 비동기적으로 받을 수 있음(non-blocking)
+            /* AcceptAsync: 클라이언트의 연결 요청을 비동기적으로 받을 수 있음(non-blocking) */
             bool pending = _listenSocket.AcceptAsync(args);
-            if (pending == false) // 클라이언트의 연결 요청이 바로 수락됨
+            if (pending == false) /* 클라이언트의 연결 요청이 바로 수락됨 */
                 OnAcceptComplete(null, args);
         }
 
@@ -71,14 +71,14 @@ namespace ServerCore
         {
             if (args.SocketError == SocketError.Success)
             {
-                // AcceptSocket: 비동기 소켓 메소드를 통해 연결을 허용하기 위해 만들었거나 사용할 소켓을 가져오거나 설정
-                // _onAcceptHandler에 등록된 ServerCore의 Program.OnAcceptHandler()에게 인수로 소켓 전달 (args.AcceptSocket의 반환값: Socket)
+                /* AcceptSocket: 비동기 소켓 메소드를 통해 연결을 허용하기 위해 만들었거나 사용할 소켓을 가져오거나 설정 */
+                /* _onAcceptHandler에 등록된 ServerCore의 Program.OnAcceptHandler()에게 인수로 소켓 전달 (args.AcceptSocket의 반환값: Socket) */
                 _onAcceptHandler.Invoke(args.AcceptSocket);
             }
             else
                 Console.WriteLine(args.SocketError.ToString());
 
-            // 클라이언트의 연결 요청을 받기 위해 사용하는 SocketAsyncEventArgs 재사용
+            /* 클라이언트의 연결 요청을 받기 위해 사용하는 SocketAsyncEventArgs 재사용 */
             RegisterAccept(args);
         }
     }
