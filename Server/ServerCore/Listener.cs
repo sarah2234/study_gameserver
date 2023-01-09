@@ -26,13 +26,13 @@ namespace ServerCore
          */
 
         Socket _listenSocket;
-        Action<Socket> _onAcceptHandler; /* Socket을 인자로 사용하는 메소드 참조 */
+        Func<Session> _sessionFactory; /* 세션을 어떤 방식으로 만들지 결정할 수 있음 */
 
-        public void Init(IPEndPoint endPoint, Action<Socket> onAcceptHandler)
+        public void Init(IPEndPoint endPoint, Func<Session> sessionFactory)
         {
             /* TCP 소켓 객체 생성 */
             _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _onAcceptHandler += onAcceptHandler;
+            _sessionFactory += sessionFactory;
 
             /* 소켓에 필요한 정보(ip 주소, 포트 번호) 바인딩 */
             _listenSocket.Bind(endPoint);
@@ -71,9 +71,11 @@ namespace ServerCore
         {
             if (args.SocketError == SocketError.Success)
             {
-                /* AcceptSocket: 비동기 소켓 메소드를 통해 연결을 허용하기 위해 만들었거나 사용할 소켓을 가져오거나 설정 */
-                /* _onAcceptHandler에 등록된 ServerCore의 Program.OnAcceptHandler()에게 인수로 소켓 전달 (args.AcceptSocket의 반환값: Socket) */
-                _onAcceptHandler.Invoke(args.AcceptSocket);
+                /* 세션 생성(Program.cs에서 어떤 종류의 세션인지 결정) */
+                Session session = _sessionFactory.Invoke();
+                /* Start()는 외부가 아닌 내부에서 실행되는 것이 좋음 */
+                session.Start(args.AcceptSocket);
+                session.OnConnected(args.AcceptSocket.RemoteEndPoint);
             }
             else
                 Console.WriteLine(args.SocketError.ToString());

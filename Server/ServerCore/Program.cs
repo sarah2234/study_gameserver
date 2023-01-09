@@ -1,38 +1,45 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 
 namespace ServerCore
 {
+    class GameSession : Session
+    {
+        /* 클라이언트의 연결 요청이 성공적으로 받아들여졌을 때 수행하는 함수 */
+        public override void OnConnected(EndPoint endPoint)
+        {
+            Console.WriteLine($"OnConnected: {endPoint}");
+
+            byte[] sendBuffer = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+            Send(sendBuffer);
+            Thread.Sleep(1000);
+            Disconnect();
+        }
+
+        public override void OnDisconnected(EndPoint endPoint)
+        {
+            Console.WriteLine($"OnDisconnected: {endPoint}");
+        }
+
+        public override void OnRecv(ArraySegment<byte> buffer)
+        {
+            string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+            Console.WriteLine($"[From Client] {recvData}");
+        }
+
+        public override void OnSend(int numOfBytes)
+        {
+            Console.WriteLine($"Transfer bytes: {numOfBytes}");
+        }
+    }
+
     class Program
     {
         static Listener _listener = new Listener();
-
-        /* 클라이언트의 연결 요청이 성공적으로 받아들여졌을 때 수행하는 함수 */
-        static void OnAcceptHandler(Socket clientSocket)
-        {
-            try
-            {
-                /* _listener가 성공적으로 연결 요청을 받았을 때 세션 생성 */
-                Session session = new Session();
-                session.Start(clientSocket);
-
-                byte[] sendBuffer = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-                session.Send(sendBuffer);
-
-                Thread.Sleep(1000);
-
-                session.Disconnect();
-                session.Disconnect(); /* 연결 종료를 두 번 했을 시 오류가 뜨는지 확인 */
-            }
-
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
 
         static void Main(string[] args) 
         {
@@ -48,7 +55,8 @@ namespace ServerCore
             IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
 
             /* Listen 서버 생성 */
-            _listener.Init(endPoint, OnAcceptHandler);
+            /* 어떤 세션을 만들지 여기서 결정 */
+            _listener.Init(endPoint, () => { return new GameSession(); });
             Console.WriteLine("Listening...");
 
             while (true)
