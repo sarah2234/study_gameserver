@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace ServerCore
 {
     /* Session: 클라이언트와 서버 간 연결이 종료되기 전의 상태 */
-    abstract class Session
+    public abstract class Session
     {
         Socket _socket;
         int _disconnected = 0;

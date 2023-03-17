@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ServerCore
 {
-    internal class Listener
+    public class Listener
     {
         /*
          * C#에서는 대리자(Delegate)로 callback 함수를 구현한다.
